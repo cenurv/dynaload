@@ -1,0 +1,1 @@
+%{"git_cli": {:hex, :git_cli, "0.2.3", "052f0ecfc43d86fb4a750741540bdb00ac63354c6588024555be62c8ea1eff33", [:mix], [], "hexpm"}}
