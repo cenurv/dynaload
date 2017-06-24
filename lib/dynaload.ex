@@ -7,7 +7,7 @@ defmodule Dynaload do
   project that integrates this library.
   """
 
-  @package_base ".dyna_packages"
+  @package_base ".dynaload_packages"
 
   defmacro __using__(_opts) do
     quote do
@@ -19,18 +19,18 @@ defmodule Dynaload do
 
   defp get_process_agent_name do
     pid = to_string(inspect self())
-    String.to_atom "package_for_" <> pid
+    String.to_atom "packager_for_" <> pid
   end
 
-  defp set_package(package) do
-    Agent.start_link(fn -> package end, name: get_process_agent_name())
+  defp set_packager(packager) do
+    Agent.start_link(fn -> packager end, name: get_process_agent_name())
   end
 
-  defp get_package do
+  defp get_packager do
     Agent.get(get_process_agent_name(), &(&1))
   end
 
-  defp clear_package do
+  defp clear_packager do
     Agent.stop get_process_agent_name()
   end
 
@@ -40,11 +40,11 @@ defmodule Dynaload do
   package. That file is responsible for using `require_script`
   to load other files.
   """
-  def launch(package) do
-    set_package package
-    response = run package, :index
-    clear_package()
-    response
+  def launch(package, opts \\ []) do
+    packager = Keyword.get opts, :packager, Dynaload.Packager.Git
+    set_packager packager
+    packager.launch package, opts
+    clear_packager()
   end
 
   @doc """
@@ -66,16 +66,12 @@ defmodule Dynaload do
     end
   end
 
-  defp run(package, script_name) do
-    Code.load_file("#{to_string(script_name)}.exs", package_folder(package))
-  end
-
   @doc """
   Reads and executes immediately an Elixir script from the current process package.
   Used inside the elixir script files to load other files.
   """
   def require_script(script_name) do
-    run get_package(), script_name
+    get_packager().require_script script_name
   end
 
   @doc """
