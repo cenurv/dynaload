@@ -42,8 +42,28 @@ defmodule Dynaload do
   """
   def launch(package) do
     set_package package
-    run package, :index
+    response = run package, :index
     clear_package()
+    response
+  end
+
+  @doc """
+  Scans the packages folder and launches all packages.
+  Will not launch in any guaranteed order, packages should
+  not be written to be dependent upon other packages in the
+  script. To use functionality, declare a module with function
+  that can be called after all packages have been launched.
+  """
+  def launch_installed_packages do
+    case File.ls @package_base do
+      {:error, :enoent} -> {:error, :packages_not_installed}
+      {:ok, files} ->
+        # Filter out files that start with "." and are folders
+        files
+        |> Enum.filter(&(not String.starts_with?(&1, ".")))
+        |> Enum.filter(&(File.dir?(package_folder(&1))))
+        |> Enum.reduce(%{}, &(Map.put(&2, &1, launch(&1))))
+    end
   end
 
   defp run(package, script_name) do
