@@ -70,7 +70,7 @@ defmodule Dynaload do
     if File.exists?(folder) do
       {:ok, Git.new(Path.absname(folder))}
     else
-      Git.clone [url, folder] 
+      Git.clone [url, folder]
     end
   end
 
