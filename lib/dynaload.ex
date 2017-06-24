@@ -7,7 +7,7 @@ defmodule Dynaload do
   project that integrates this library.
   """
 
-  @package_base ".dyna_packages"
+  @package_base ".dynaload_packages"
 
   defmacro __using__(_opts) do
     quote do
