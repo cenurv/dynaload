@@ -29,6 +29,10 @@ defmodule Dynaload.Packager.Local do
     Code.load_file("#{to_string(script_name)}.exs", package_folder(package))
   end
 
+  def update_options(fun) do
+    Agent.update get_process_agent_name(), fun
+  end
+
   @doc """
   Launches a elixir script package from the package folder.
   Will always load the index.exs file in the root of the
@@ -80,12 +84,17 @@ defmodule Dynaload.Packager.Local do
     if path do
       folder = Keyword.get opts, :folder, @package_base
       folder = "#{folder}/#{package}"
+
       if not File.exists?(folder) do
         File.mkdir! folder
       end
 
+      expanded_path = Path.expand path, Path.absname(".")
+
       File.write! "#{folder}/index.exs", """
-        Code.load_file "#{path}/index.exs"
+        import Dynaload
+        update_options fn(options) -> Map.put options, :folder, "#{expanded_path}" end
+        require_script :index
       """
     else
       throw :no_path_provided

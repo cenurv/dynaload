@@ -29,6 +29,10 @@ defmodule Dynaload.Packager.Git do
     Code.load_file("#{to_string(script_name)}.exs", package_folder(package))
   end
 
+  def update_options(fun) do
+    Agent.update get_process_agent_name(), fun
+  end
+
   @doc """
   Launches a elixir script package from the package folder.
   Will always load the index.exs file in the root of the

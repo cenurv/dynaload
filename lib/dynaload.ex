@@ -9,7 +9,7 @@ defmodule Dynaload do
 
   defmacro __using__(_opts) do
     quote do
-      import Dynaload, only: [require_script: 1]
+      import Dynaload, only: [require_script: 1, update_options: 1]
     end
   end
 
@@ -28,6 +28,13 @@ defmodule Dynaload do
 
   defp clear_packager do
     Agent.stop get_process_agent_name()
+  end
+
+  @doc """
+  Allows a script to update the options used in the launch context.
+  """
+  def update_options(fun) do
+    get_packager().update_options fun
   end
 
   @doc """
