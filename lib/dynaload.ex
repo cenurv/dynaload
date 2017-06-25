@@ -94,4 +94,23 @@ defmodule Dynaload do
     packages = packager.get_installed_packages opts
     Enum.reduce(packages, %{}, &(Map.put(&2, &1, update_package(&1, opts))))
   end
+
+  @doc """
+  Remove an installed package.
+  """
+  def remove_package(package, opts \\ []) do
+    packager = Keyword.get opts, :packager, Dynaload.Packager.Git
+    packager.remove_package package, opts
+  end
+
+  @doc """
+  Remove all installed packages, this will not remove the code from the running
+  application since it has already been compiled. You will need to restart
+  your application to have the code completely removed.
+  """
+  def remove_installed_packages(opts \\ []) do
+    packager = Keyword.get opts, :packager, Dynaload.Packager.Git
+    packages = packager.get_installed_packages opts
+    Enum.reduce(packages, %{}, &(Map.put(&2, &1, remove_package(&1, opts))))
+  end
 end

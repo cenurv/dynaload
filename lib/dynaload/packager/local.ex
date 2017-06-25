@@ -1,4 +1,4 @@
-defmodule Dynaload.Packager.Git do
+defmodule Dynaload.Packager.Local do
   @moduledoc """
 
   """
@@ -75,18 +75,20 @@ defmodule Dynaload.Packager.Git do
   use `update_package`.
   """
   def fetch_package(package, opts \\ []) do
-    url = Keyword.get opts, :url
+    path = Keyword.get opts, :path
 
-    if url do
+    if path do
       folder = Keyword.get opts, :folder, @package_base
       folder = "#{folder}/#{package}"
-      if File.exists?(folder) do
-        {:ok, Git.new(Path.absname(folder))}
-      else
-        Git.clone [url, folder]
+      if not File.exists?(folder) do
+        File.mkdir! folder
       end
+
+      File.write! "#{folder}/index.exs", """
+        Code.load_file "#{path}/index.exs"
+      """
     else
-      throw :no_url_provided
+      throw :no_path_provided
     end
   end
 
@@ -95,15 +97,8 @@ defmodule Dynaload.Packager.Git do
   Uses git pull to update the package. Will throw
   an error if the package name is not installed.
   """
-  def update_package(package, opts \\ []) do
-    folder = Keyword.get opts, :folder, @package_base
-    folder = "#{folder}/#{package}"
-
-    if File.exists?(folder) do
-      Git.pull Git.new(folder)
-    else
-      {:error, :package_not_installed}
-    end
+  def update_package(_package, _opts \\ []) do
+    :ok
   end
 
   def remove_package(package, opts \\ []) do
