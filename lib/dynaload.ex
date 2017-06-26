@@ -6,6 +6,7 @@ defmodule Dynaload do
   repositories into the ```.dyna_packages``` folder at the root of the
   project that integrates this library.
   """
+  @package_base ".dynaload_packages"
 
   defmacro __using__(_opts) do
     quote do
@@ -13,28 +14,43 @@ defmodule Dynaload do
     end
   end
 
-  defp get_process_agent_name do
+  defp package_folder(package) do
+    folder = "#{get_options().folder}/#{package}"
+
+    # most likely an absolute path if the project name
+    # is not found under the folder. I need a better way
+    # to handle this.
+    if not File.exists? folder do
+      get_options().folder
+    end
+  end
+
+  defp get_process_agent_options_name do
     pid = to_string(inspect self())
-    String.to_atom "packager_for_" <> pid
+    String.to_atom "packager_options_for_" <> pid
   end
 
-  defp set_packager(packager) do
-    Agent.start_link(fn -> packager end, name: get_process_agent_name())
+  defp put_options(options) do
+    Agent.start_link(fn -> options end, name: get_process_agent_options_name())
   end
 
-  defp get_packager do
-    Agent.get(get_process_agent_name(), &(&1))
+  defp get_options do
+    Agent.get(get_process_agent_options_name(), &(&1))
   end
 
-  defp clear_packager do
-    Agent.stop get_process_agent_name()
+  defp clear_options do
+    Agent.stop get_process_agent_options_name()
+  end
+
+  defp run(package, script_name) do
+    Code.load_file("#{to_string(script_name)}.exs", package_folder(package))
   end
 
   @doc """
   Allows a script to update the options used in the launch context.
   """
   def update_options(fun) do
-    get_packager().update_options fun
+    Agent.update get_process_agent_options_name(), fun
   end
 
   @doc """
@@ -44,10 +60,24 @@ defmodule Dynaload do
   to load other files.
   """
   def launch(package, opts \\ []) do
-    packager = Keyword.get opts, :packager, Dynaload.Packager.Git
-    set_packager packager
-    packager.launch package, opts
-    clear_packager()
+    folder = Keyword.get opts, :folder, @package_base
+    put_options %{folder: folder, package: package}
+    response = run package, :index
+    clear_options()
+    response
+  end
+
+  defp get_installed_packages(opts \\ []) do
+    folder = Keyword.get opts, :folder, @package_base
+
+    case File.ls folder do
+      {:error, :enoent} -> {:error, :packages_not_installed}
+      {:ok, files} ->
+        # Filter out files that start with "." and are folders
+        files
+        |> Enum.filter(&(not String.starts_with?(&1, ".")))
+        |> Enum.filter(&(File.dir?(package_folder(&1))))
+    end
   end
 
   @doc """
@@ -58,8 +88,7 @@ defmodule Dynaload do
   that can be called after all packages have been launched.
   """
   def launch_installed_packages(opts \\ []) do
-    packager = Keyword.get opts, :packager, Dynaload.Packager.Git
-    packages = packager.get_installed_packages opts
+    packages = get_installed_packages(opts)
     Enum.reduce(packages, %{}, &(Map.put(&2, &1, launch(&1, opts))))
   end
 
@@ -68,7 +97,7 @@ defmodule Dynaload do
   Used inside the elixir script files to load other files.
   """
   def require_script(script_name) do
-    get_packager().require_script script_name
+    run get_options().package, script_name
   end
 
   @doc """
@@ -97,8 +126,7 @@ defmodule Dynaload do
   repos.
   """
   def update_installed_packages(opts \\ []) do
-    packager = Keyword.get opts, :packager, Dynaload.Packager.Git
-    packages = packager.get_installed_packages opts
+    packages = get_installed_packages(opts)
     Enum.reduce(packages, %{}, &(Map.put(&2, &1, update_package(&1, opts))))
   end
 
@@ -116,8 +144,7 @@ defmodule Dynaload do
   your application to have the code completely removed.
   """
   def remove_installed_packages(opts \\ []) do
-    packager = Keyword.get opts, :packager, Dynaload.Packager.Git
-    packages = packager.get_installed_packages opts
+    packages = get_installed_packages(opts)
     Enum.reduce(packages, %{}, &(Map.put(&2, &1, remove_package(&1, opts))))
   end
 end

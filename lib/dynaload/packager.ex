@@ -4,10 +4,16 @@ defmodule Dynaload.Packager do
   reading in Dynaload Elixir script packages and macking them
   available to load/execute.
   """
+  @package_base ".dynaload_packages"
 
-  @callback launch(package_name :: String.t | Atom.t, options :: Keyword.t) :: :ok | {:error, Atom.t}
-  @callback require_script(script_name :: String.t | Atom.t) :: :ok | {:error, Atom.t}
-  @callback get_installed_packages(options :: Keyword.t) :: [String.t]
+  defmacro __using__(_opts) do
+    quote do
+      @behaviour Dynaload.Packager
+      @package_base unquote(@package_base)
+    end
+  end
+
   @callback fetch_package(package_name :: String.t | Atom.t, options :: Keyword.t) :: String.t
   @callback update_package(package_name :: String.t | Atom.t, options :: Keyword.t) :: String.t
+  @callback remove_package(package_name :: String.t | Atom.t, options :: Keyword.t) :: String.t
 end
